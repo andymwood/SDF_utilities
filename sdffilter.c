@@ -29,10 +29,11 @@ int purge_duplicate, ignore_nblocks;
 int64_t array_ndims, *array_starts, *array_ends, *array_strides;
 int slice_direction, slice_dim[3];
 char *output_file;
-char *format_float, *format_int, *format_space;
+char *format_float, *format_int, *format_long, *format_space;
 //static char *default_float = "%9.6fE%+2.2d1p";
 static char *default_float = "%13.6E";
-static char *default_int   = "%" PRIi64;
+static char *default_int   = "%" PRIi32;
+static char *default_long  = "%" PRIi64;
 static char *default_space = "    ";
 static char *default_indent = "  ";
 static char indent[64];
@@ -132,6 +133,8 @@ void usage(int err)
   -F --format-float=f  Use specified format for printing floating-point array\n\
                        contents.\n\
   -N --format-int=f    Use specified format for printing integer array\n\
+                       contents.\n\
+  -L --format-long=f   Use specified format for printing long integer array\n\
                        contents.\n\
   -S --format-space=f  Use specified spacing between array elements.\n\
   -K --format-number   Show block number before each row of array elements.\n\
@@ -321,6 +324,7 @@ char *parse_args(int *argc, char ***argv)
         { "mmap",            no_argument,       NULL, 'm' },
         { "no-metadata",     no_argument,       NULL, 'n' },
         { "format-int",      required_argument, NULL, 'N' },
+        { "format-long",     required_argument, NULL, 'L' },
         { "format-rowindex", no_argument,       NULL, 'R' },
         { "single",          no_argument,       NULL, 's' },
         { "format-space",    required_argument, NULL, 'S' },
@@ -349,6 +353,9 @@ char *parse_args(int *argc, char ***argv)
     format_int = malloc(strlen(default_int)+1);
     memcpy(format_int, default_int, strlen(default_int)+1);
 
+    format_long = malloc(strlen(default_long)+1);
+    memcpy(format_long, default_long, strlen(default_long)+1);
+
     format_float = malloc(strlen(default_float)+1);
     memcpy(format_float, default_float, strlen(default_float)+1);
 
@@ -358,7 +365,7 @@ char *parse_args(int *argc, char ***argv)
     got_include = got_exclude = 0;
 
     while ((c = getopt_long(*argc, *argv,
-            "1:a:bcC:deF:hHiIjJKlmnN:RsS:v:x:pV", longopts, NULL)) != -1) {
+            "1:a:bcC:deF:hHiIjJKlmnN:L:RsS:v:x:pV", longopts, NULL)) != -1) {
         switch (c) {
         case '1':
             contents = 1;
@@ -423,6 +430,11 @@ char *parse_args(int *argc, char ***argv)
             free(format_int);
             format_int = malloc(strlen(optarg)+1);
             memcpy(format_int, optarg, strlen(optarg)+1);
+            break;
+        case 'L':
+            free(format_long);
+            format_long = malloc(strlen(optarg)+1);
+            memcpy(format_long, optarg, strlen(optarg)+1);
             break;
         case 'o':
             if (output_file) free(output_file);
@@ -571,6 +583,7 @@ void free_memory(sdf_file_t *h)
 {
 
     if (format_int) free(format_int);
+    if (format_long) free(format_long);
     if (format_float) free(format_float);
     if (format_space) free(format_space);
     sdf_stack_destroy(h);
@@ -594,7 +607,7 @@ static void print_value(void *data, int datatype)
         printf(format_int, *((uint32_t*)data));
         break;
     case SDF_DATATYPE_INTEGER8:
-        printf(format_int, *((uint64_t*)data));
+        printf(format_long, *((uint64_t*)data));
         break;
     case SDF_DATATYPE_REAL4:
         if (special_format) {
